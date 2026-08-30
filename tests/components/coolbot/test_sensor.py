@@ -115,6 +115,24 @@ async def test_stale_readings_go_unavailable(
     assert hass.states.get("sensor.walk_in_cooler_set_point").state == "unavailable"
 
 
+async def test_a_cooler_added_later_appears_without_a_reload(
+    hass: HomeAssistant, mock_client: AsyncMock, mock_config_entry: MockConfigEntry
+) -> None:
+    """New coolers on the account appear on the next refresh."""
+    await _setup(hass, mock_config_entry)
+    assert hass.states.get("sensor.cellar_room_temperature") is None
+
+    mock_client.async_get_devices.return_value = [
+        make_device(),
+        make_device(unique_id="coolbot_112233445566", name="Cellar"),
+    ]
+    await _tick(hass)
+
+    state = hass.states.get("sensor.cellar_room_temperature")
+    assert state is not None
+    assert state.state == "38.5"
+
+
 async def test_entities_survive_a_device_missing_from_one_refresh(
     hass: HomeAssistant, mock_client: AsyncMock, mock_config_entry: MockConfigEntry
 ) -> None:

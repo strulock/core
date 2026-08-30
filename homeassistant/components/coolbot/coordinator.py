@@ -54,6 +54,9 @@ class CoolbotCoordinator(DataUpdateCoordinator[dict[str, CoolbotDevice]]):
         #: absent until a device first reports. The name is kept so a device
         #: that drops out of the profile can still be named in a log line.
         self._reporting: dict[str, tuple[str, bool]] = {}
+        #: Devices that already have entities, so each refresh only adds coolers
+        #: that are new.
+        self.known_devices: set[str] = set()
         #: Name and hardware details last written to the device registry, per
         #: unique id, so an unchanged refresh does not touch the registry at all.
         self._device_details: dict[str, tuple[str, str, str | None, str | None]] = {}

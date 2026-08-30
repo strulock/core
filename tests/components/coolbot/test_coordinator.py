@@ -197,6 +197,12 @@ async def test_a_device_waits_for_its_mac_identity(
     assert not mock_config_entry.runtime_data.data
     assert hass.states.get("sensor.walk_in_cooler_room_temperature") is None
 
+    # Once the MAC replays, it appears under its stable identity.
+    mock_client.async_get_devices.return_value = [make_device()]
+    await _tick(hass)
+    assert set(mock_config_entry.runtime_data.data) == {"coolbot_aabbccddeeff"}
+    assert hass.states.get("sensor.walk_in_cooler_room_temperature") is not None
+
 
 async def test_startup_replay_is_not_logged_as_an_outage(
     hass: HomeAssistant,
