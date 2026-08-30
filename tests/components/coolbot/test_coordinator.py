@@ -76,14 +76,13 @@ async def test_failed_refresh_marks_data_stale_then_recovers(
     assert mock_config_entry.runtime_data.last_update_success
 
 
-async def test_auth_failure_during_refresh_closes_the_socket(
+async def test_auth_failure_during_refresh_starts_reauth(
     hass: HomeAssistant, mock_client: AsyncMock, mock_config_entry: MockConfigEntry
 ) -> None:
-    """Credentials failing mid-flight stop the refreshes and drop the socket.
+    """Credentials failing mid-flight prompt the user rather than looping.
 
-    Nothing useful can happen until the password is fixed, so the socket must
-    not be left open for however long that takes. No reauth flow starts yet;
-    that arrives in a follow-up PR.
+    Refreshes stop until reauth completes, so the socket is closed rather than
+    left open for however long that takes.
     """
     assert await setup_integration(hass, mock_config_entry)
     mock_client.async_close.reset_mock()
@@ -91,8 +90,8 @@ async def test_auth_failure_during_refresh_closes_the_socket(
     mock_client.async_get_devices.side_effect = CoolbotAuthError("expired")
     await _tick(hass)
 
-    assert not mock_config_entry.runtime_data.last_update_success
-    assert not hass.config_entries.flow.async_progress_by_handler(DOMAIN)
+    flows = hass.config_entries.flow.async_progress_by_handler(DOMAIN)
+    assert any(flow["context"]["source"] == "reauth" for flow in flows)
     mock_client.async_close.assert_awaited()
 
 

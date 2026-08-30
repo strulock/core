@@ -82,19 +82,16 @@ async def test_setup_succeeds_for_an_account_with_no_devices(
     assert mock_config_entry.runtime_data.data == {}
 
 
-async def test_setup_fails_as_an_auth_error_on_bad_credentials(
+async def test_setup_starts_reauth_on_bad_credentials(
     hass: HomeAssistant, mock_client: AsyncMock, mock_config_entry: MockConfigEntry
 ) -> None:
-    """Rejected credentials fail setup as an auth error instead of retrying.
-
-    ConfigEntryAuthFailed marks the entry SETUP_ERROR rather than scheduling
-    retries; the reauth flow that would let the user fix the password in place
-    arrives in a follow-up PR.
-    """
+    """Rejected credentials at setup prompt for reauth instead of retrying."""
     mock_client.async_connect.side_effect = CoolbotAuthError("rejected")
 
     assert not await setup_integration(hass, mock_config_entry)
     assert mock_config_entry.state is ConfigEntryState.SETUP_ERROR
+    flows = hass.config_entries.flow.async_progress_by_handler(DOMAIN)
+    assert any(flow["context"]["source"] == "reauth" for flow in flows)
 
 
 async def test_hardware_details_that_replay_late_reach_the_registry(
