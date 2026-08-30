@@ -256,6 +256,15 @@ class CoolbotCoordinator(DataUpdateCoordinator[dict[str, CoolbotDevice]]):
                 "%s has stopped reporting; its readings are marked unavailable", name
             )
 
+    def forget_device(self, unique_id: str) -> None:
+        """Forget a device that Home Assistant has removed.
+
+        The same cooler returning to the account starts from a clean slate
+        rather than inheriting the removed device's bookkeeping.
+        """
+        self._reporting.pop(unique_id, None)
+        self._device_details.pop(unique_id, None)
+
     @override
     async def async_shutdown(self) -> None:
         """Stop refreshing and close the socket."""

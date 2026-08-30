@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 
 from pycoolbot import CoolbotAuthError, CoolbotError
 
+from homeassistant.components.coolbot import async_remove_config_entry_device
 from homeassistant.components.coolbot.const import DOMAIN, UPDATE_INTERVAL
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
@@ -154,3 +155,56 @@ async def test_a_rename_in_the_account_reaches_the_registry(
     )
     assert device is not None
     assert device.name == "Flower cooler"
+
+
+async def test_removing_a_device_the_account_still_reports_is_refused(
+    hass: HomeAssistant,
+    device_registry: dr.DeviceRegistry,
+    mock_client: AsyncMock,
+    mock_config_entry: MockConfigEntry,
+) -> None:
+    """A device the account still reports would just be recreated."""
+    assert await setup_integration(hass, mock_config_entry)
+
+    device = device_registry.async_get_device_by_identifier(
+        (DOMAIN, "coolbot_aabbccddeeff"), mock_config_entry.entry_id
+    )
+    assert device is not None
+    assert not await async_remove_config_entry_device(hass, mock_config_entry, device)
+
+
+async def test_removing_a_vanished_device_is_allowed(
+    hass: HomeAssistant,
+    device_registry: dr.DeviceRegistry,
+    mock_client: AsyncMock,
+    mock_config_entry: MockConfigEntry,
+) -> None:
+    """A device the account no longer reports may be deleted."""
+    assert await setup_integration(hass, mock_config_entry)
+
+    orphan = device_registry.async_get_or_create(
+        config_entry_id=mock_config_entry.entry_id,
+        identifiers={(DOMAIN, "coolbot_gone")},
+    )
+    assert await async_remove_config_entry_device(hass, mock_config_entry, orphan)
+
+
+async def test_the_last_cooler_can_be_deleted_once_the_account_drops_it(
+    hass: HomeAssistant,
+    device_registry: dr.DeviceRegistry,
+    mock_client: AsyncMock,
+    mock_config_entry: MockConfigEntry,
+) -> None:
+    """Removal is refused while reported, and allowed once it is gone."""
+    assert await setup_integration(hass, mock_config_entry)
+
+    device = device_registry.async_get_device_by_identifier(
+        (DOMAIN, "coolbot_aabbccddeeff"), mock_config_entry.entry_id
+    )
+    assert device is not None
+    assert not await async_remove_config_entry_device(hass, mock_config_entry, device)
+
+    mock_client.async_get_devices.return_value = []
+    await _tick(hass)
+
+    assert await async_remove_config_entry_device(hass, mock_config_entry, device)

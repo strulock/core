@@ -94,7 +94,11 @@ rules:
     status: exempt
     comment: |
       No situations a repair issue could fix.
-  stale-devices: todo
+  stale-devices:
+    status: done
+    comment: |
+      Devices missing from a refresh go unavailable rather than being deleted;
+      async_remove_config_entry_device allows removing genuinely gone devices.
   # Platinum
   async-dependency: done
   inject-websession: done
